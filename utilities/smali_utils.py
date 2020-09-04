@@ -5,7 +5,6 @@ import re
 from colorama import init, Fore
 
 
-
 def get_dir_files(dir):
     fname = []
     for root, d_names, f_names in os.walk(dir):
@@ -19,17 +18,17 @@ def get_dir_files(dir):
 def print_regex_find(fname, reg):
     file = open(fname, 'r')
     for line in file:
-        matches = re.findall(reg, line)
+        matches = reg.search(line)
         if matches:
             line_highlight = re.sub(reg, Fore.RED + r'\g<0>' + Fore.RESET, line)
-            print('{}: {}'.format(fname, line_highlight), end = '')
+            print('{}: {}'.format(fname, line_highlight), end='')
     file.close()
 
 
 def find_class(jclass, dir):
     fname = get_dir_files(dir)
     r = str.replace(jclass, '$', '\$')
-    rex = '\.class .*L{}'.format(r)
+    rex = '\.class .*L{};'.format(r)
     reg = re.compile(rex, re.IGNORECASE)
     if type(fname) is str:
         print_regex_find(fname, reg)
@@ -41,7 +40,7 @@ def find_class(jclass, dir):
 def find_super(jsuper, dir):
     fname = get_dir_files(dir)
     r = str.replace(jsuper, '$', '\$')
-    rex = '\.super .*L{}'.format(r)
+    rex = '\.super .*L{};'.format(r)
     reg = re.compile(rex, re.IGNORECASE)
     if type(fname) is str:
         print_regex_find(fname, reg)
@@ -53,7 +52,7 @@ def find_super(jsuper, dir):
 def find_interface(jinterface, dir):
     fname = get_dir_files(dir)
     r = str.replace(jinterface, '$', '\$')
-    rex = '\.interface .*L{}'.format(r)
+    rex = '\.interface .*L{};'.format(r)
     reg = re.compile(rex, re.IGNORECASE)
     if type(fname) is str:
         print_regex_find(fname, reg)
@@ -86,7 +85,18 @@ if __name__ == '__main__':
 
     init()
 
-    my_parser = argparse.ArgumentParser(description='Smali files utilities')
+    my_parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter,
+                                        description='Smali files utilities.\n\nThe search system works with '
+                                                    'regex so for searches including '
+                                                    'special characters don\'t forget to '
+                                                    'escape them.\nExample: '
+                                                    'smali_utils.py -a '
+                                                    'class.example\\$1 smali/',
+                                        epilog='EXAMPLES:\n\n'
+                                               'smali_utils.py -c myapp.Activity smali/\n\n'
+                                               'smali_utils -s android.app.Application smali/\n\n'
+                                               'smali_utils -a sendTextMessage smali/\n\n'
+                                               'smali_utils -f search.txt smali/')
     my_parser.add_argument('-c', '--class', dest='jclass', nargs=2, metavar=('<class>', '<dir>'),
                            help='search for java class in dir')
     my_parser.add_argument('-s', '--super', dest='jsuper', nargs=2, metavar=('<super>', '<dir>'),
