@@ -25,7 +25,22 @@ def print_regex_find(fname, reg):
     file.close()
 
 
+def print_regex_find_file(results, keys, fname, pattern_lists):
+    file = open(fname, 'r')
+
+    for line in file:
+        i = 0
+        for reg in pattern_lists:
+            matches = reg.search(line)
+            if matches:
+                line_highlight = re.sub(reg, Fore.RED + r'\g<0>' + Fore.RESET, line)
+                results[keys[i]].append('{}: {}'.format(fname, line_highlight))
+            i += 1
+    file.close()
+
+
 def find_class(jclass, dir):
+    print('Starting class search...')
     fname = get_dir_files(dir)
     r = str.replace(jclass, '$', '\$')
     rex = '\.class .*L{};'.format(r)
@@ -38,6 +53,7 @@ def find_class(jclass, dir):
 
 
 def find_super(jsuper, dir):
+    print('Starting super search...')
     fname = get_dir_files(dir)
     r = str.replace(jsuper, '$', '\$')
     rex = '\.super .*L{};'.format(r)
@@ -50,6 +66,7 @@ def find_super(jsuper, dir):
 
 
 def find_interface(jinterface, dir):
+    print('Starting interface search...')
     fname = get_dir_files(dir)
     r = str.replace(jinterface, '$', '\$')
     rex = '\.interface .*L{};'.format(r)
@@ -62,6 +79,7 @@ def find_interface(jinterface, dir):
 
 
 def find_all(pattern, dir):
+    print('Starting all search...')
     fname = get_dir_files(dir)
     r = str.replace(pattern, '$', '\$')
     reg = re.compile(r, re.IGNORECASE)
@@ -73,12 +91,31 @@ def find_all(pattern, dir):
 
 
 def find_from_file(file_name, dir):
+    print('Starting strings search from file...')
+    pattern_list = []
+    keys = []
+    res = {}
     f = open(file_name, 'r')
     for line in f:
-        print('\nResults for String: {}'.format(line))
-        find_all(line.strip(), dir)
-        print('===================================================')
+        r = str.replace(line.strip(), '$', '\$')
+        reg = re.compile(r, re.IGNORECASE)
+        pattern_list.append(reg)
+        keys.append(line.strip())
+        res[line.strip()] = []
     f.close()
+
+    fname = get_dir_files(dir)
+    if type(fname) is str:
+        print_regex_find_file(res, keys, fname, pattern_list)
+    else:
+        for file in fname:
+            print_regex_find_file(res, keys, file, pattern_list)
+
+    for k, v in res.items():
+        print('\nResults for String: {}\n'.format(k))
+        for values in v:
+            print(values, end='')
+        print('===================================================')
 
 
 if __name__ == '__main__':
