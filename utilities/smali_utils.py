@@ -43,7 +43,7 @@ def find_class(jclass, dir):
     print('Starting class search...')
     fname = get_dir_files(dir)
     r = str.replace(jclass, '$', '\$')
-    rex = '\.class .*L{};'.format(r)
+    rex = '\.class .*L.*{};'.format(r)
     reg = re.compile(rex, re.IGNORECASE)
     if type(fname) is str:
         print_regex_find(fname, reg)
@@ -56,7 +56,7 @@ def find_super(jsuper, dir):
     print('Starting super search...')
     fname = get_dir_files(dir)
     r = str.replace(jsuper, '$', '\$')
-    rex = '\.super .*L{};'.format(r)
+    rex = '\.super .*L.*{};'.format(r)
     reg = re.compile(rex, re.IGNORECASE)
     if type(fname) is str:
         print_regex_find(fname, reg)
@@ -69,7 +69,7 @@ def find_interface(jinterface, dir):
     print('Starting interface search...')
     fname = get_dir_files(dir)
     r = str.replace(jinterface, '$', '\$')
-    rex = '\.interface .*L{};'.format(r)
+    rex = '\.interface .*L.*{};'.format(r)
     reg = re.compile(rex, re.IGNORECASE)
     if type(fname) is str:
         print_regex_find(fname, reg)
@@ -92,34 +92,25 @@ def find_all(pattern, dir):
 
 def find_from_file(file_name, dir):
     print('Starting strings search from file...')
-    pattern_list = []
-    keys = []
-    res = {}
     f = open(file_name, 'r')
-    for line in f:
-        r = str.replace(line.strip(), '$', '\$')
-        reg = re.compile(r, re.IGNORECASE)
-        pattern_list.append(reg)
-        keys.append(line.strip())
-        res[line.strip()] = []
+    mylist = [tuple(map(str, i.split(':'))) for i in f]
+    for type, line in mylist:
+        print('\nOption: {}\nResults for String: {}'.format(type, line.strip()))
+        if type == '-a':
+            find_all(line.strip(), dir)
+        elif type == '-s':
+            find_super(line.strip(), dir)
+        elif type == '-i':
+            find_interface(line.strip(), dir)
+        elif type == '-c':
+            find_class(line.strip(), dir)
+        print('\n===================================================')
     f.close()
-
-    fname = get_dir_files(dir)
-    if type(fname) is str:
-        print_regex_find_file(res, keys, fname, pattern_list)
-    else:
-        for file in fname:
-            print_regex_find_file(res, keys, file, pattern_list)
-
-    for k, v in res.items():
-        print('\nResults for String: {}\n'.format(k))
-        for values in v:
-            print(values, end='')
-        print('===================================================')
 
 
 if __name__ == '__main__':
 
+    # from colorama
     init()
 
     my_parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter,
@@ -143,7 +134,7 @@ if __name__ == '__main__':
     my_parser.add_argument('-a', '--all', dest='all', nargs=2, metavar=('<pattern>', '<dir>'),
                            help='search for String pattern in all smali in dir')
     my_parser.add_argument('-f', '--input-file', dest='input_file', nargs=2, metavar=('<input_file>', '<dir>'),
-                           help='reads Strings from file and searches them in all smali in dir')
+                           help='reads pairs [option:string_to_search] from file in smali in dir. Example: -a:sendTextMessage')
 
     if not len(sys.argv) > 1:
         my_parser.print_help()
