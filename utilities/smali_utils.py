@@ -93,7 +93,7 @@ def find_all(pattern, dir):
 def find_from_file(file_name, dir):
     print('Starting strings search from file...')
     f = open(file_name, 'r')
-    mylist = [tuple(map(str, i.split(':'))) for i in f]
+    mylist = [tuple(map(str, i.split(':', 1))) for i in f]
     for type, line in mylist:
         print('\nOption: {}\nResults for String: {}'.format(type, line.strip()))
         if type == '-a':
