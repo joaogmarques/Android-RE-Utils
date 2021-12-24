@@ -118,33 +118,6 @@ def find_from_file(file_name, dir):
     f.close()
 
 
-def find_from_file_v2(file_name, dir):
-    pattern_list = []
-    keys = []
-    res = {}
-    f = open(file_name, 'r')
-    for line in f:
-        r = str.replace(line.strip(), '$', '\$')
-        reg = re.compile(r, re.IGNORECASE)
-        pattern_list.append(reg)
-        keys.append(line.strip())
-        res[line.strip()] = []
-    f.close()
-
-    fname = get_dir_files(dir)
-    if type(fname) is str:
-        print_regex_find_file(res, keys, fname, pattern_list)
-    else:
-        for file in fname:
-            print_regex_find_file(res, keys, file, pattern_list)
-
-    for k, v in res.items():
-        print('\nResults for String: {}\n'.format(k))
-        for values in v:
-            print(values, end='')
-        print('===================================================')
-
-
 def search_in_dir(src_dir, dir):
     for subdir, dirs, files in os.walk(src_dir):
         for filename in files:
@@ -192,7 +165,7 @@ def print_encrypted_find(fname, method):
                 encrypted_vars = encrypted_params.split(',')
                 for encrypted_var in encrypted_vars:
                     # create regex pattern to find the parameter value set
-                    pattern = "const.* " + encrypted_var.strip() + ",.*"
+                    pattern = "const.* " + encrypted_var.strip() + ",.*\".*\""
                     r = str.replace(pattern, '$', '\$')
                     reg2 = re.compile(r, re.IGNORECASE)
                     y = i - 1
