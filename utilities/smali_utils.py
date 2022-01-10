@@ -3,18 +3,32 @@ import os
 import sys
 import re
 from colorama import init, Fore
+from glob import glob
 
+java_types_regex = {
+    "J": "const-wide %s, [-\w]+",
+    "Ljava/lang/String": "const-string %s, \".*\""
+}
 whitelist_filename = ''
+total_params_size = 0
+params_types = []
 
 
-def get_dir_files(dir):
-    fname = []
-    for root, d_names, f_names in os.walk(dir):
-        for f in f_names:
-            fname.append(os.path.join(root, f))
-    if not fname:
-        return dir
-    return fname
+def get_smali_from_dir(dir):
+    return [y for x in os.walk(dir) for y in glob(os.path.join(x[0], '*.smali'))]
+
+
+# this will return the total number of parameters that the encryption method has. The registers are 32 bit. 64-bit
+# type (Long and Double type) require two registers to be represented but the first register contains the actual value
+def get_total_params(method_call):
+    global params_types
+    global total_params_size
+    if total_params_size == 0:
+        result = re.search('\((.*)\)', method_call)
+        f = result.group(1).split(';')
+        params_types = list(filter(None, f))
+        total_params_size = len(params_types)
+    return total_params_size
 
 
 def print_regex_find(fname, reg):
@@ -34,6 +48,7 @@ def print_regex_find(fname, reg):
                 print('{}: {}'.format(fname, line_highlight), end='')
     except:
         print("[-] Error on handling file {}.".format(file))
+        print(sys.exc_info()[0])
     file.close()
 
 
@@ -55,7 +70,7 @@ def print_regex_find_file(results, keys, fname, pattern_lists):
 
 
 def find_class(jclass, dir):
-    fname = get_dir_files(dir)
+    fname = get_smali_from_dir(dir)
     r = str.replace(jclass, '$', '\$')
     rex = '\.class .*L.*{};'.format(r)
     reg = re.compile(rex, re.IGNORECASE)
@@ -67,7 +82,7 @@ def find_class(jclass, dir):
 
 
 def find_super(jsuper, dir):
-    fname = get_dir_files(dir)
+    fname = get_smali_from_dir(dir)
     r = str.replace(jsuper, '$', '\$')
     rex = '\.super .*L.*{};'.format(r)
     reg = re.compile(rex, re.IGNORECASE)
@@ -79,7 +94,7 @@ def find_super(jsuper, dir):
 
 
 def find_interface(jinterface, dir):
-    fname = get_dir_files(dir)
+    fname = get_smali_from_dir(dir)
     r = str.replace(jinterface, '$', '\$')
     rex = '\.interface .*L.*{};'.format(r)
     reg = re.compile(rex, re.IGNORECASE)
@@ -91,7 +106,7 @@ def find_interface(jinterface, dir):
 
 
 def find_all(pattern, dir):
-    fname = get_dir_files(dir)
+    fname = get_smali_from_dir(dir)
     r = str.replace(pattern, '$', '\$')
     reg = re.compile(r, re.IGNORECASE)
     if type(fname) is str:
@@ -142,11 +157,11 @@ def convert_to_dict(fname, keyword, delim):
 
 
 def find_encrypted_strings(pattern, dir):
-    fname = get_dir_files(dir)
-    if type(fname) is str:
-        print_encrypted_find(fname, pattern)
+    all_smali = get_smali_from_dir(dir)
+    if not all_smali:
+        print_encrypted_find(dir, pattern)
     else:
-        for file in fname:
+        for file in all_smali:
             print_encrypted_find(file, pattern)
 
 
@@ -163,23 +178,33 @@ def print_encrypted_find(fname, method):
                 z = l.find('}')
                 encrypted_params = l[x + 1:z]
                 encrypted_vars = encrypted_params.split(',')
-                for encrypted_var in encrypted_vars:
+                index = 0
+                size = get_total_params(l)
+                while index < size:
+                    encrypted_var = encrypted_vars[index]
+                    pattern = java_types_regex[params_types[index]] % encrypted_var
+                    index += 1
                     # create regex pattern to find the parameter value set
-                    pattern = "const.* " + encrypted_var.strip() + ",.*\".*\""
-                    r = str.replace(pattern, '$', '\$')
-                    reg2 = re.compile(r, re.IGNORECASE)
+
+                    # pattern = "const[-|/].* " + encrypted_var.strip() + ", ([-\w]|[\".*\"])+"
+                    reg2 = re.compile(pattern, re.IGNORECASE)
+                    # print("i = " + str(i))
                     y = i - 1
                     while y >= 0:
                         l2 = lines[y].strip()
                         matches_2 = reg2.search(l2)
+                        # print("y = " +str(y))
                         if matches_2:
-                            encrypted_string = l2.split('"')[1]
-                            print(encrypted_string)
+                            encrypted_string = l2.split(',')[1]
+                            # print(fname)
+                            print(encrypted_string.strip())
                             break
                         y -= 1
+                    print("######################################################################")
             i += 1
     except:
         print("[-] Error on handling file {}.".format(file))
+        print(sys.exc_info()[0])
     file.close()
 
 
@@ -195,9 +220,10 @@ if __name__ == '__main__':
                                                     'class.example\\$1 smali/',
                                         epilog='EXAMPLES:\n\n'
                                                'smali_utils.py -c myapp.Activity smali/\n\n'
-                                               'smali_utils -s android.app.Application smali/\n\n'
-                                               'smali_utils -a sendTextMessage smali/\n\n'
-                                               'smali_utils -f spyware_keywords.txt smali/')
+                                               'smali_utils.py -s android.app.Application smali/\n\n'
+                                               'smali_utils.py -a sendTextMessage smali/\n\n'
+                                               'smali_utils.py -f spyware_keywords.txt smali/\n\n'
+                                               'smali_utils.py -e "Lmy/app/Decrypt;->decrypt(Ljava/lang/String;)Ljava/lang/String;" smali/')
     my_parser.add_argument('-c', '--class', dest='jclass', nargs=2, metavar=('<class>', '<dir>'),
                            help='search for java class in dir')
     my_parser.add_argument('-s', '--super', dest='jsuper', nargs=2, metavar=('<super>', '<dir>'),
@@ -209,7 +235,7 @@ if __name__ == '__main__':
     my_parser.add_argument('-f', '--input-file', dest='input_file', nargs=2, metavar=('<input_file>', '<dir>'),
                            help='reads pairs [option:string_to_search] from file in smali in dir. Example: -a:sendTextMessage')
     my_parser.add_argument('-d', '--dir', dest='dir', nargs=2, metavar=('<files_dir>', '<dir>'),
-                           help='reads pairs [option:string_to_search] from all files in the source dir in smali in dir.')
+                           help='acts as flag -f but reads multiple files from a directory')
     my_parser.add_argument('-w', '--whitelist', dest='w', nargs=1, metavar=('<whitelist_file>'),
                            help='remove results that are in files with names that are contained in the whitelist file')
     my_parser.add_argument('-C', '--convert', dest='convert', nargs=3,
@@ -217,7 +243,7 @@ if __name__ == '__main__':
                            help='file to convert to dictionary, keys start with keyword and delimiter will be the delimiter between values and new key.')
     my_parser.add_argument('-e', '--encrypted', dest='encrypted', nargs=2,
                            metavar=('<decrypting_method>', '<smali_dir>'),
-                           help='returns strings used as parameter in a particular method. Usefull to get all encrypted Strings from a specific decrypting method.')
+                           help='returns data used as parameter in a particular method. Usefull to get all encrypted data from a specific decrypting method.')
 
     if not len(sys.argv) > 1:
         my_parser.print_help()
