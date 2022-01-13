@@ -201,10 +201,9 @@ def print_encrypted_find(fname, method):
                         matches_2 = reg2.search(l2)
                         if matches_2:
                             encrypted_string = l2.split(',')[1]
-                            print(encrypted_string.strip())
+                            print(encrypted_string.strip().strip('\"'))
                             break
                         y -= 1
-                    print("######################################################################")
             i += 1
     except KeyboardInterrupt:
         sys.exit(1)
